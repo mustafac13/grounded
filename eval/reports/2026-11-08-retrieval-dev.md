@@ -91,7 +91,7 @@ Retrieved instead (hybrid top 5):
 - PRIN 1.2.1: Characteristics of the client Principles 6 (Customers' interests), 7 (Communications with clients), 8 (Conflicts of interest), 9 (Customers:
 - PRIN 3.2.3: Subject to PRIN 3.2.4R, Principles 3, 4 and (in so far as it relates to disclosing to the FCA) 11 (and this chapter) also: (1) apply to firm
 
-Why (guess, written by hand after reading the gold text): wording gap and no stemming: the only "honest" text is "honesty" in PRIN 2A.2.2, and FTS5's default tokenizer does not stem, so keyword cannot match it; "Principle" pulls in PRIN 1 and 3 meta-provisions about the Principles instead; PRIN 2.1.1 is split in two parts and "integrity" is never asked about.
+Why (guess, written by hand after reading the gold text): wording gap and no stemming: the only "honest" text is "honesty" in PRIN 2A.2.2, and FTS5's default tokenizer does not stem, so keyword cannot match it; "Principle" pulls in PRIN 1 and 3 meta-provisions about the Principles instead; PRIN 2.1.1 is split in two parts and "integrity" is never asked about. Reviewed with Mustafa 8 Nov: label confirmed; fusion made it worse, since dense alone ranks PRIN 2.1.1 at 6 but keyword buries it at 137, and RRF averages to 22 (second case after a40 of plain RRF pulling a good ranking down).
 
 ### a25 (paraphrase, gold_mode any)
 
@@ -107,7 +107,7 @@ Retrieved instead (hybrid top 5):
 - DISP 1.3.3: A respondent must put in place appropriate management controls and take reasonable steps to ensure that in handling complaints it identifies
 - DISP 1.3.6: Where a firm identifies (from its complaints or otherwise) recurring or systemic problems in its provision of, or failure to provide, a fina
 
-Why (guess, written by hand after reading the gold text): near miss (rank 7) and wording gap: "look into properly" against "investigate competently, diligently and impartially"; generic "firm must take reasonable steps" provisions win on shared words.
+Why (guess, written by hand after reading the gold text): near miss (rank 7) and wording gap: "look into properly" against "investigate competently, diligently and impartially"; generic "firm must take reasonable steps" provisions win on shared words. Reviewed with Mustafa 8 Nov: label confirmed (MiFID copy DISP 1.1A.20 at rank 6 not added, same rule as a16); fusion helped here, keyword 27 and dense 21 fused to 7, the opposite of a18.
 
 ### a27 (paraphrase, gold_mode any)
 
@@ -123,7 +123,7 @@ Retrieved instead (hybrid top 5):
 - DISP 1.1A.34: DISP 2.8.1R sets out the circumstances in which the Ombudsman can consider a complaint, including where eight weeks have elapsed since its r
 - DISP 1.1A.31: The explanation given by MiFID investment firms to clients or potential clients in accordance with DISP 1.1A.30R must also: (1) enclose a co
 
-Why (guess, written by hand after reading the gold text): near miss (rank 7), MiFID crowding: five sibling DISP 1.1A provisions share "MiFID complaint" and "time limits"; the question's "three days" is "third business day" in the rule.
+Why (guess, written by hand after reading the gold text): near miss (rank 7), MiFID crowding: five sibling DISP 1.1A provisions share "MiFID complaint" and "time limits"; the question's "three days" is "third business day" in the rule. Reviewed with Mustafa 8 Nov: label confirmed; the general rule DISP 1.5.1 (keyword rank 7) is not added, because the question says MiFID, the mirror of the a16 decision (gold matches the population the question names).
 
 ### a37 (multi, gold_mode all)
 
@@ -139,7 +139,7 @@ Retrieved instead (hybrid top 5):
 - DISP 1.11.6A: Obligation to publish summary of complaints data Where, in accordance with DISP 1.11.6 R, the Society submits a report to the FCA reporting 
 - DISP 1.10A.11: For firms reporting 500 or more complaints under DISP 1.10.1R(1) or 1000 or more complaints under DISP 1.10.1R(2) in the relevant reporting 
 
-Why (guess, written by hand after reading the gold text): multi-provision: the dates rule DISP 1.10A.3 is rank 2, but the obligation rule DISP 1.10A.1 is rank 9, behind the Lloyd's (DISP 1.11) mirror provisions; DISP 1.10A.1 is also a split provision whose heading is truncated ("or total number of").
+Why (guess, written by hand after reading the gold text): multi-provision: the dates rule DISP 1.10A.3 is rank 2, but the obligation rule DISP 1.10A.1 is rank 9, behind the Lloyd's (DISP 1.11) mirror provisions; DISP 1.10A.1 is also a split provision whose heading is truncated ("or total number of"). Reviewed with Mustafa 8 Nov: labels confirmed (Lloyd's DISP 1.11.6A not added, the question names "a firm"); each retriever found a different half (keyword 1.10A.1 at 3, dense 1.10A.3 at 1), but the Lloyd's copies scored on both lists and outranked the half only one retriever liked. Heading truncation is an ingest defect, logged as a follow-up, not fixed in this baseline.
 
 ### a40 (multi, gold_mode all)
 
@@ -155,5 +155,18 @@ Retrieved instead (hybrid top 5):
 - PRIN 1.1.6: Standards in markets outside the United Kingdom As set out in PRIN 3.3 (Where?), Principles 1 (Integrity), 2 (Skill, care and diligence) and
 - DISP 1.1.12: (1) A firm, payment service provider, electronic money issuer, designated credit reference agency or designated finance platform falling wit
 
-Why (guess, written by hand after reading the gold text): multi-provision near miss: PRIN 1.1.7 is rank 1, PRIN 3.4.4 (section 138D) is rank 6; dense misses it entirely, keyword alone gets both, and RRF averages the two down to rank 6.
+Why (guess, written by hand after reading the gold text): multi-provision near miss: PRIN 1.1.7 is rank 1, PRIN 3.4.4 (section 138D) is rank 6; dense misses it entirely, keyword alone gets both, and RRF averages the two down to rank 6. Reviewed with Mustafa 8 Nov: labels confirmed ("138D" appears only in PRIN 3.4.4 and the Lloyd's DISP 1.11.21); keyword ranks PRIN 3.4.4 first, dense 41st (a statute number carries no meaning for MiniLM), and generic PRIN 1 provisions that score moderately on both lists outrank it.
+
+## Review with Mustafa (8 Nov 2026)
+
+All seven failures were read against the gold text. No label changed, so the numbers above stand. One labelling rule was made explicit: the gold matches the population the question names, so MiFID-only copies do not count for a general question (a16, a25), and the general rule does not count for a MiFID question (a27); Lloyd's copies do not count for "a firm" (a37).
+
+Causes, revised from the overnight guesses:
+
+- Plain RRF hurt in three cases where one retriever was right and the other badly wrong (a18 dense 6 to hybrid 22; a37 each retriever found a different gold; a40 keyword 1 to hybrid 6), and helped once where both were mediocre (a25, 27 and 21 to 7). This is why hybrid ties the single retrievers on recall@5.
+- Mirror provisions crowd the top 5 in four of seven: MiFID DISP 1.1A (a16, a25, a27) and Lloyd's DISP 1.11 (a37). This is a property of the Handbook, not of either retriever.
+- Genuine wording gaps: two (a15, a18). Stemming would plausibly fix only a18.
+- Ingest defect found: DISP 1.10A.1's heading is truncated ("...or total number of"). Follow-up, not fixed here, because it would change the corpus hash under this baseline.
+
+Next experiments, after the answer adapter is chosen and measured on dev against this baseline: how the two rankings are combined (weighted fusion or a reranker), and handling of mirror provisions. Stemming is lower priority than first thought.
 

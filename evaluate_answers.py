@@ -108,10 +108,22 @@ def outcome(q: dict, rec: dict, judge: dict | None) -> str:
     return "correct" if judge["correct"] and not unsupported else "wrong"
 
 
+def cites_gold(q: dict, rec: dict) -> bool:
+    """Mechanical, no judge: do the answer's citations include the gold
+    provision(s)? An answer can read as correct while resting on a mirror
+    provision for another population (MiFID, Lloyd's), which the labelling
+    rule of 8 Nov does not accept as gold. The score is left as designed;
+    this flag makes those answers visible next to it."""
+    cited = {c for cl in rec["parsed"]["claims"] for c in cl["cites"]}
+    gold = q.get("gold") or []
+    return bool(gold) and (all if q.get("gold_mode") == "all" else any)(g in cited for g in gold)
+
+
 def summarise(rows: list[dict], recs: dict, judges: dict) -> dict:
     """recs and judges are keyed by question id, for ONE run."""
     outs = {r["id"]: outcome(r, recs[r["id"]], judges.get(r["id"])) for r in rows}
     counts = {k: sum(o == k for o in outs.values()) for k in SCORE}
+    off_gold = sorted(r["id"] for r in rows if outs[r["id"]] == "correct" and not cites_gold(r, recs[r["id"]]))
     right = counts["correct"] + counts["correct_refusal"]
     labelled = [(c, j) for r in rows if (rec := recs[r["id"]])["parsed"] and rec["parsed"]["claims"]
                 and (jd := judges.get(r["id"]))
@@ -119,7 +131,7 @@ def summarise(rows: list[dict], recs: dict, judges: dict) -> dict:
     material = [j for _, j in labelled if j["material"]]
     cited = [j for c, j in labelled if c["cites"]]
     return {
-        "n": len(rows), "outcomes": outs, "counts": counts,
+        "n": len(rows), "outcomes": outs, "counts": counts, "correct_off_gold": off_gold,
         "score": sum(SCORE[o] for o in outs.values()) / len(rows) if rows else 0.0,
         "right": right, "right_ci": wilson(right, len(rows)),
         "claims": len(labelled), "material": len(material),
@@ -276,6 +288,10 @@ def report(rows: list[dict], run_dir: Path, ctx: dict, runs: int, mode: str, out
                  f"{c['correct']} | {c['correct_refusal']} | {c['false_refusal']} | {c['invalid']} | {c['wrong']} |")
     L += ["", f"Spread across runs: min {min(scores):.3f}, median {statistics.median(scores):.3f}, "
               f"max {max(scores):.3f}.", "",
+          "Correct answers that did NOT cite the gold provision, per run: "
+          + "; ".join(f"run {i}: {', '.join(s['correct_off_gold']) or 'none'}" for i, s in enumerate(per_run, 1))
+          + ". These count +1 in the score as designed, but each one rests on a provision the labelling "
+            "does not accept as gold, so read them before quoting the score.", "",
           "## Support (judge labels)", "",
           "| Run | Claims | Material | Hallucination rate | Citation precision | Coverage |", "|---|---|---|---|---|---|"]
     for i, s in enumerate(per_run, 1):
@@ -369,6 +385,22 @@ def _self_check() -> None:
     # A filler claim leaves the hallucination base: 1 unsupported of 2 material, not of 3 claims.
     s3 = summarise(rows, recs, {**judges, "q0": J(True, material=False, supported=False)})
     assert s3["claims"] == 3 and s3["material"] == 2 and abs(s3["hallucination"] - 1 / 2) < 1e-9, s3
+
+    # Gold-cited flag: the same correct answer is on-gold or off-gold depending
+    # only on what it cited. any-mode needs one gold, all-mode needs every gold.
+    two = {"parsed": {"refusal": None, "claims": [{"text": "t", "cites": ["X 1"]}, {"text": "t", "cites": ["Z 3"]}]}}
+    assert cites_gold({"gold": ["X 1"], "gold_mode": "any"}, answered)
+    assert not cites_gold({"gold": ["Y 2"], "gold_mode": "any"}, answered)      # mirror provision cited instead
+    assert cites_gold({"gold": ["X 1", "Y 2"], "gold_mode": "any"}, answered)
+    assert not cites_gold({"gold": ["X 1", "Y 2"], "gold_mode": "all"}, answered)
+    assert cites_gold({"gold": ["X 1", "Z 3"], "gold_mode": "all"}, two)        # golds spread over two claims
+    assert not cites_gold({"gold": [], "gold_mode": "none"}, answered)
+    g_rows = [{"id": "on", "type": "exact", "gold": ["X 1"], "gold_mode": "any"},
+              {"id": "off", "type": "exact", "gold": ["Y 2"], "gold_mode": "any"},
+              {"id": "bad", "type": "exact", "gold": ["Y 2"], "gold_mode": "any"}]
+    g = summarise(g_rows, {r["id"]: answered for r in g_rows}, {"on": J(True), "off": J(True), "bad": J(False)})
+    # Only a CORRECT answer can be off-gold; the wrong one is not listed, and the score is untouched.
+    assert g["correct_off_gold"] == ["off"] and g["counts"]["correct"] == 2 and abs(g["score"] - 1 / 3) < 1e-9, g
 
     # Trivial strategies on the REAL dev rows. Always-refuse scores exactly the
     # unanswerable share and must sit below a mostly-right system; always-answer

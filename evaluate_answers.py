@@ -1,6 +1,7 @@
-"""Answer evaluation on the DEV split: every dev question (answerable and
-unanswerable) is answered RUNS times, a judge model labels the answers, and
-each one lands in exactly one outcome. The held-out split is never scored.
+"""Answer evaluation on one split (dev by default): every question (answerable
+and unanswerable) is answered RUNS times, a judge model labels the answers, and
+each one lands in exactly one outcome. Held-out is scored only when named with
+--split heldout, once, after the retriever, prompt and judge are frozen.
 
 Outcomes and score (design note, written before any tuning):
   correct          +1  answerable, answered, judge says it matches the reference
@@ -17,6 +18,7 @@ The spread across runs is reported, not the best run.
 
 Run:  python evaluate_answers.py --run-dir eval/runs/<name>            full run, resumable
       python evaluate_answers.py --run-dir eval/runs/smoke --limit 4 --runs 1
+      python evaluate_answers.py --run-dir eval/runs/heldout-v1 --split heldout
       python evaluate_answers.py --self-check                          offline, no model
 """
 
@@ -56,11 +58,11 @@ Reply with one JSON object and nothing else:
 {"claims": [{"n": 1, "material": true, "supported": true}], "correct": true, "note": "one short sentence"}"""
 
 
-def load_dev(path: Path = QUESTIONS, limit: int | None = None) -> list[dict]:
-    """All dev rows, answerable and unanswerable. Held-out rows are dropped on parse."""
+def load_dev(path: Path = QUESTIONS, limit: int | None = None, split: str = "dev") -> list[dict]:
+    """All rows of one split, answerable and unanswerable. Other rows are dropped on parse."""
     rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
-    rows = [r for r in rows if r["split"] == "dev"]
-    assert_dev_only(rows)
+    rows = [r for r in rows if r["split"] == split]
+    assert_dev_only(rows, split)
     return rows[:limit] if limit else rows
 
 
@@ -242,7 +244,8 @@ def human_sample(rows, answers, judgements, ctx, path: Path) -> None:
     path.write_text("\n".join(L), encoding="utf-8")
 
 
-def report(rows: list[dict], run_dir: Path, ctx: dict, runs: int, mode: str, out: Path) -> None:
+def report(rows: list[dict], run_dir: Path, ctx: dict, runs: int, mode: str, out: Path,
+           split: str = "dev") -> None:
     import retrieve as rt
     answers, judgements = _read(run_dir / "answers.jsonl"), _read(run_dir / "judgements.jsonl")
     per_run = []
@@ -260,7 +263,7 @@ def report(rows: list[dict], run_dir: Path, ctx: dict, runs: int, mode: str, out
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "corpus_sha256": corpus_sha(rt.connect()),
         "questions_sha256": hashlib.sha256(QUESTIONS.read_bytes()).hexdigest(),
-        "split": f"dev, {len(rows)} questions ({len(rows) - n_unans} answerable, {n_unans} unanswerable)",
+        "split": f"{split}, {len(rows)} questions ({len(rows) - n_unans} answerable, {n_unans} unanswerable)",
         "retriever": mode, "k_provisions": ans.K, "runs": runs,
         "answer_model": sorted({m for a in answers.values() for m in a.get("models") or [a["model"]]}),
         "judge_model": sorted({m for j in judgements.values() for m in j.get("models") or [JUDGE_MODEL]}),
@@ -274,7 +277,7 @@ def report(rows: list[dict], run_dir: Path, ctx: dict, runs: int, mode: str, out
     def pct(x):
         return "n/a" if x is None else f"{x:.3f}"
 
-    L = ["# Answer evaluation, dev split", "", "```json", json.dumps(meta, indent=2), "```", "",
+    L = [f"# Answer evaluation, {split} split", "", "```json", json.dumps(meta, indent=2), "```", "",
          f"Score is the mean of +1 (correct answer or correct refusal), 0 (false refusal or invalid output) "
          f"and -1 (wrong or unsupported answer). Refusing everything would score "
          f"{n_unans}/{len(rows)} = {n_unans / len(rows):.3f}. Support labels come from the judge model only; "
@@ -477,7 +480,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", type=Path)
     ap.add_argument("--runs", type=int, default=RUNS)
-    ap.add_argument("--limit", type=int, help="first N dev questions only (smoke run)")
+    ap.add_argument("--limit", type=int, help="first N questions only (smoke run)")
+    ap.add_argument("--split", choices=["dev", "heldout"], default="dev")
     ap.add_argument("--mode", choices=["keyword", "dense", "hybrid"], default=ans.MODE)
     ap.add_argument("--out", type=Path)
     ap.add_argument("--self-check", action="store_true")
@@ -487,11 +491,11 @@ def main() -> None:
     if not a.run_dir:
         ap.error("give --run-dir")
     a.run_dir.mkdir(parents=True, exist_ok=True)
-    rows = load_dev(limit=a.limit)
+    rows = load_dev(limit=a.limit, split=a.split)
     ctx = generate(rows, a.run_dir, a.runs, a.mode)
     judge_all(rows, a.run_dir, ctx)
     report(rows, a.run_dir, ctx, a.runs, a.mode,
-           a.out or HERE / "eval" / "reports" / f"{datetime.now():%Y-%m-%d}-answers-{a.run_dir.name}.md")
+           a.out or HERE / "eval" / "reports" / f"{datetime.now():%Y-%m-%d}-answers-{a.run_dir.name}.md", a.split)
 
 
 if __name__ == "__main__":

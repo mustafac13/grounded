@@ -1,8 +1,10 @@
-"""Retrieval evaluation on the DEV split: recall@5 and MRR@10 at provision level
+"""Retrieval evaluation on one split (dev by default): recall@5 and MRR@10 at provision level
 for keyword, dense and hybrid, with Wilson 95% intervals and per-type slices.
-No LLM, no API calls. The held-out split is never scored.
+No LLM, no API calls. Held-out is scored only when named with --split heldout,
+once, after the retriever is frozen.
 
 Run:  python evaluate.py [--out eval/reports/<date>-retrieval-dev.md]
+      python evaluate.py --split heldout
       python evaluate.py --self-check
 
 Provision level: passages split for length ('DISP 1.1.3#2') count as their
@@ -32,22 +34,22 @@ RECALL_K, MRR_K = 5, 10
 DEPTH = 50  # passages fetched per query; dedup to provisions happens after
 
 
-def load_dev(path: Path = QUESTIONS) -> list[dict]:
-    """Answerable dev rows only. Held-out rows are dropped on parse, never kept."""
+def load_dev(path: Path = QUESTIONS, split: str = "dev") -> list[dict]:
+    """Answerable rows of one split only. Other rows are dropped on parse, never kept."""
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         r = json.loads(line)
-        if r["split"] == "dev" and r["type"] != "unanswerable":
+        if r["split"] == split and r["type"] != "unanswerable":
             rows.append(r)
-    assert_dev_only(rows)
+    assert_dev_only(rows, split)
     return rows
 
 
-def assert_dev_only(rows: list[dict]) -> None:
-    bad = [r["id"] for r in rows if r.get("split") != "dev"]
-    assert not bad, f"refusing to score non-dev rows: {bad}"
+def assert_dev_only(rows: list[dict], split: str = "dev") -> None:
+    bad = [r["id"] for r in rows if r.get("split") != split]
+    assert not bad, f"refusing to score rows outside {split}: {bad}"
 
 
 def provisions(passage_ids: list[str]) -> list[str]:
@@ -97,11 +99,11 @@ def corpus_sha(conn: sqlite3.Connection) -> str:
     return got
 
 
-def run(out: Path) -> None:
+def run(out: Path, split: str = "dev") -> None:
     import retrieve as rt
 
-    rows = load_dev()
-    assert_dev_only(rows)
+    rows = load_dev(split=split)
+    assert_dev_only(rows, split)
     conn = rt.connect()
     emb = rt.Embedder()
     ranked = {m: {} for m in MODES}
@@ -116,7 +118,7 @@ def run(out: Path) -> None:
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "corpus_sha256": corpus_sha(conn),
         "questions_sha256": hashlib.sha256(QUESTIONS.read_bytes()).hexdigest(),
-        "split": "dev (answerable only)",
+        "split": f"{split} (answerable only)",
         "retrievers": {"keyword": "FTS5 BM25, OR-query of \\w+ terms",
                        "dense": f"{rt.MODEL_REPO} ONNX, mean-pooled, cosine, max {rt.MAX_TOKENS} tokens",
                        "hybrid": f"RRF k={rt.RRF_K}, each ranking to depth 50"},
@@ -135,7 +137,7 @@ def _fmt(s: dict) -> str:
 
 
 def render(rows, ranked, stats, meta, conn) -> str:
-    L = ["# Retrieval evaluation, dev split (untuned baseline)", "",
+    L = [f"# Retrieval evaluation, {meta['split'].split()[0]} split (untuned baseline)", "",
          "```json", json.dumps(meta, indent=2), "```", "",
          "Recall@5 is the share of questions whose gold (any/all per gold_mode) is in the top 5 "
          "distinct provisions, with a Wilson 95% interval. MRR@10 uses the first gold for `any` "
@@ -212,19 +214,23 @@ def _self_check() -> None:
         pass
     dev = load_dev()
     assert dev and all(r["split"] == "dev" and r["type"] != "unanswerable" for r in dev)
+    # Splits never mix: each load returns only its own rows, and they are disjoint.
+    held = load_dev(split="heldout")
+    assert held and all(r["split"] == "heldout" for r in held)
+    assert not {r["id"] for r in dev} & {r["id"] for r in held}
     print("self-check passed")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", type=Path,
-                    default=HERE / "eval" / "reports" / f"{datetime.now():%Y-%m-%d}-retrieval-dev.md")
+    ap.add_argument("--out", type=Path)
+    ap.add_argument("--split", choices=["dev", "heldout"], default="dev")
     ap.add_argument("--self-check", action="store_true")
     a = ap.parse_args()
     if a.self_check:
         _self_check()
     else:
-        run(a.out)
+        run(a.out or HERE / "eval" / "reports" / f"{datetime.now():%Y-%m-%d}-retrieval-{a.split}.md", a.split)
 
 
 if __name__ == "__main__":

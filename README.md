@@ -161,8 +161,10 @@ python evaluate.py       # retrieval, dev split
 
 The answer step calls a logged-in `claude` CLI.
 
-## Licence of the content
+## Licences
 
-Contains FCA Handbook material, (c) FCA, reused under the Open Government
-Licence v3. The PDFs and the built database are not in this repository.
+The code is released under the MIT licence (see `LICENSE`). The MIT licence
+does not cover FCA material: this repository contains FCA Handbook material
+(provision text quoted in the evaluation files), (c) FCA, reused under the
+Open Government Licence v3. The PDFs and the built database are not in this repository.
 Nothing here is advice.

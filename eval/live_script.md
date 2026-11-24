@@ -49,8 +49,37 @@ provision: a retrieval miss, not a page fault. Record what it actually does.
 
 ## Results
 
+How it was run (24 Nov): `python app.py`, page open in the Claude desktop
+app's browser pane. Claude typed each question and clicked Ask through a small
+page script, timed "Working..." from the click, read the page's own "Done in
+X s", opened every citation and read each claim with its cited text aloud to
+Mustafa, who judged support. A claim identical in wording and citation to one
+he had already judged is not re-read.
+
+Cell = outcome and page seconds. ok = right answer or right refusal, every
+citation supported; weak = every citation supported but the answer misses the
+expected provision (retrieval miss) and answers for the wrong population.
+
 | Pass | Date | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Q12 | p95 s | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | | | | | | | | | | | | | | | |
-| 2 | | | | | | | | | | | | | | | |
-| 3 | | | | | | | | | | | | | | | |
+| 1 | 24 Nov | ok 8.6 | ok 7.2 | ok 8.4 | ok 6.5 | weak 5.7 | ok 7.7 | weak 8.1 | ok 5.8 | ok 8.2 | ok 6.2 | ok 6.1 | ok 6.0 | 8.6 (max) | 27/27 claims supported (Mustafa). "Working..." 1-7 ms. 0 interaction failures. Q5 answered MiFID only (DISP 1.1A.28), Q7 payment/e-money only ("once a year", DISP 1.10B.1) instead of DISP 1.10.1 "twice a year": both predicted by the pre-check. Q1, Q3 also cite MiFID mirrors; Q3 adds record-keeping not asked. |
+| 2 | 24 Nov | ok 6.3 | ok 7.6 | ok 8.1 | ok 6.3 | weak 7.0 | ok 7.2 | weak+unsup 10.0 | ok 6.7 | ok 7.5 | ok 5.9 | ok 5.5 | ok 6.5 | 10.0 (max) | 27/28 claims supported (Mustafa; claims repeating an approved point from the same citation carried over, 4 new claims read). Unsupported: Q7 "The passages do not state a reporting frequency for firms generally" citing DISP 1.10.9, a claim about what the passages lack (same kind as held-out a39 run 2 claim 1). "Working..." 1-3 ms. 0 interaction failures. Same outcomes as pass 1. |
+| 3 | 24 Nov | ok 7.2 | ok 6.7 | ok 8.4 | ok 6.3 | weak 7.9 | ok 7.0 | weak+unsup 7.9 | ok 6.4 | ok 8.5 | ok 7.2 | ok 5.1 | ok 5.5 | 8.5 (max) | 26/27 claims supported (Mustafa; 2 new claims read). Unsupported: Q7 "The passages do not state a reporting frequency for firms generally ..." citing DISP 1.10B.1 + DISP 1.10.9, same kind as pass 2. Q1 added "(in the UCITS context)" to DISP 1.3.1A; judged supported. "Working..." 1-6 ms. 0 interaction failures. Same outcomes as passes 1 and 2. |
+
+## Verdict (24 Nov, 3 passes, 36 questions)
+
+Page behaviour: ACCEPTED against the locked targets. "Working..." visible in
+1 to 7 ms (target under 0.5 s); answer or refusal in 5.1 to 10.0 s, so p95
+well under 12 s; 0 interaction failures; every citation opened its passage.
+
+Answer quality: NOT accepted. 10 of 12 questions right in every pass, the same
+two wrong in every pass: Q5 (answers only for MiFID firms) and Q7 (answers
+only for payment and e-money firms, "once a year"; the general rule is "twice
+a year"). Both are retrieval misses that the free pre-check predicted before
+the page was opened. 79 of 82 claims supported (96%); all 3 unsupported claims
+are sentences about what the passages lack, 2 of them on Q7.
+
+Not covered by this script: the 20 s timeout under a real hung model. The
+underlying timeout was fixed and measured separately (1 s timeout fires in
+about 4 s including start-up, commit fb3aaa5), but the page's 20 s path has
+not been seen live.

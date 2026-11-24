@@ -138,8 +138,12 @@ baseline.
   the standard library's `http.server`, not FastAPI, and caps question
   length and requests per day; the planned per-request token cap is not built,
   because the CLI has no output-token limit.
-- Live acceptance (`eval/live_script.md`) is written but not yet passed, so
-  the page's status is "built, not yet accepted".
+- Live acceptance (`eval/live_script.md`, 12 new questions, 3 passes): the
+  page met every timing target (answers in 5 to 10 s) with no interaction
+  failures, and 79 of 82 claims were supported by hand check. Answer quality
+  was 10 of 12 in every pass; the same two questions failed every time
+  because retrieval missed the general rule and the model answered for a
+  narrower group of firms.
 
 ## Running it
 

@@ -100,6 +100,22 @@ retrieved, and the model answered the half it could see without saying the
 other half was missing. So the errors sit mainly in retrieval, not in
 answering.
 
+### Is the judge trustworthy?
+
+A random 20% of judged claims (35 dev, 21 held-out) were labelled by hand,
+blind to the judge's verdict, by reading only the cited provisions
+(`python judge_agreement.py eval/runs/dev-v1 eval/runs/heldout-v1`).
+
+Agreement on claim support: 55 of 56 [0.91-1.00]. The one disagreement is
+the most informative result: a39 run 2 claim 1, where the answer said "the
+passages do not set out a full list of the complaints procedures". That is
+the model commenting on what it was shown, which no citation can support. The
+human said unsupported and the judge said supported. So the judge was
+lenient on the only claim either rater called unsupported, and its ability to
+catch bad claims is barely tested by this sample. The reported held-out
+hallucination rate (0.028) is therefore a floor, not an estimate. The answer
+score is unaffected, because a39 was already scored wrong.
+
 ### What did not work
 
 Ten retrieval variants were compared with the baseline on dev, with the list
@@ -113,8 +129,9 @@ baseline.
 ## Known limits
 
 - Small evaluation: 24 dev and 16 held-out answerable questions.
-- The judge model is not yet checked against human labels; a 35-claim blind
-  sample is drawn and waiting to be labelled.
+- The judge agrees with human labels on 55 of 56 claims, but the sample held
+  only one unsupported claim and the judge missed it. Its correctness
+  verdicts (as opposed to support labels) are not checked by a human at all.
 - Mirror provisions: DISP repeats some rules for MiFID firms and Lloyd's, and
   the model sometimes cites the mirror instead of the general rule.
 - The demo runs locally through the Claude CLI. It is not deployed. It uses

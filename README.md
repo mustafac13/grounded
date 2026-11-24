@@ -89,7 +89,9 @@ Reading the held-out errors one by one:
 - a30 and a39 (all 6 wrong answers without gold): multi-provision questions
   where only one of the two provisions was retrieved. The model answered the
   half it could see and said the passages did not cover the rest. The scoring
-  table has no partial-answer outcome, so these count as wrong.
+  table has no partial-answer outcome, so these count as wrong. Adding one
+  after seeing these results was considered and declined: the table stays as
+  it was fixed before tuning.
 
 Report: `eval/reports/2026-11-24-answers-heldout-v1.md`.
 

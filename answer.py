@@ -118,16 +118,29 @@ def call_claude(system: str, user: str, model: str = ANSWER_MODEL, timeout: int 
     with tempfile.TemporaryDirectory() as tmp:
         sys_file = Path(tmp) / "system.txt"
         sys_file.write_text(system, encoding="utf-8")
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             [exe, "-p", "--model", model, "--system-prompt-file", str(sys_file), "--tools", "",
              "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence",
              "--output-format", "json"],
-            input=user, capture_output=True, encoding="utf-8", errors="replace", cwd=tmp, timeout=timeout,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            encoding="utf-8", errors="replace", cwd=tmp,
         )
+        try:
+            stdout, stderr = proc.communicate(user, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # On Windows claude.CMD runs node under cmd.exe. Killing cmd.exe alone
+            # (what subprocess.run does) leaves node holding the pipes, and a 1 s
+            # timeout took 44 s to fire (measured 24 Nov). Kill the whole tree.
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
+            else:
+                proc.kill()
+            proc.communicate()
+            raise
     try:
-        d = json.loads(proc.stdout)
+        d = json.loads(stdout)
     except json.JSONDecodeError:
-        raise RuntimeError(f"claude exit {proc.returncode}: {(proc.stderr or proc.stdout)[:300]}") from None
+        raise RuntimeError(f"claude exit {proc.returncode}: {(stderr or stdout)[:300]}") from None
     if d.get("is_error"):
         raise RuntimeError(f"claude error: {d.get('result')}")
     return {"text": d["result"], "usage": d.get("usage"), "models": sorted(d.get("modelUsage", {})),

@@ -53,10 +53,12 @@ spread is reported.
 | dense | 0.708 [0.51-0.85] | 0.250 [0.10-0.49] |
 | hybrid | 0.708 [0.51-0.85] | 0.562 [0.33-0.77] |
 
-On dev the three retrievers tied. On held-out, dense search fell to 4 of 16
-and dragged the hybrid down with it, while plain keyword search held up. The
-held-out set is small, so the intervals are wide, but the dense drop is
-the largest effect in the project. Held-out failures are listed in
+Nothing was tuned on dev, so the two columns are two untuned samples of the
+same system. Fisher exact tests, dev against held-out: dense 17/24 against
+4/16, p = 0.009; hybrid p = 0.50; keyword p = 1.0. Only the dense drop is
+distinguishable from chance. Dense retrieval is unstable across question sets
+here, while keyword search is not, and 16 to 24 questions are too few to pin
+down a stable number for the hybrid. Held-out failures are listed in
 `eval/reports/2026-11-24-retrieval-heldout.md`.
 
 ### Answers
@@ -67,8 +69,11 @@ the largest effect in the project. Held-out failures are listed in
 | Held-out (24 questions) | 0.542, 0.542, 0.542 | 0.333 |
 
 Held-out was run once, on 24 November 2026, after the retriever, prompt and
-judge were frozen (commit `bfbd487`). It beats the always-refuse baseline but
-falls well short of dev, and the drop is mostly retrieval: the hybrid
+judge were frozen (commit `bfbd487`). It beats the always-refuse baseline. It
+is lower than dev, but the gap in right outcomes (about 30/36 against 16/24)
+is not significant (Fisher p = 0.21), so the honest reading is one system
+measured on two small samples. Where it went wrong, the cause was mostly
+retrieval: the hybrid
 retriever showed the gold provision for only 9 of the 16 answerable
 questions. All 8 unanswerable questions were refused in every run. When the
 gold was shown, 24 of 27 answers were correct; when it was not, the model
@@ -97,9 +102,9 @@ answering.
 
 ### What did not work
 
-Eleven retrieval variants were tried on dev, with the list fixed before any
-was run (RRF weighting, stemming, scoping out the MiFID and Lloyd's mirror
-sections, and others). None was statistically distinguishable from the
+Ten retrieval variants were compared with the baseline on dev, with the list
+fixed before any was run (RRF k, fusion weighting, interleaving, Porter
+stemming, and scoping out the MiFID and Lloyd's mirror sections). None was statistically distinguishable from the
 baseline on 24 questions (best p = 0.25, uncorrected). The best-looking one
 (scoping, 17/24 to 20/24) was written after reading the failures and half of
 it was untested, so it was not adopted, and held-out ran on the untuned
@@ -112,7 +117,10 @@ baseline.
   sample is drawn and waiting to be labelled.
 - Mirror provisions: DISP repeats some rules for MiFID firms and Lloyd's, and
   the model sometimes cites the mirror instead of the general rule.
-- The demo runs locally through the Claude CLI. It is not deployed.
+- The demo runs locally through the Claude CLI. It is not deployed. It uses
+  the standard library's `http.server`, not FastAPI, and caps question
+  length and requests per day; the planned per-request token cap is not built,
+  because the CLI has no output-token limit.
 - Live acceptance (`eval/live_script.md`) is written but not yet passed, so
   the page's status is "built, not yet accepted".
 

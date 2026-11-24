@@ -12,8 +12,9 @@ warm answer or refusal p95 under 12 s; a hung model shows an error within
 
 These are new questions, not rows from `questions.jsonl`. Three expected
 provisions (DISP 1.3.1AA, DISP 1.9.1, DISP 1.6.2) are also gold for held-out
-questions; the held-out run was frozen and scored before this script exists,
-so the overlap cannot affect that number. Expected provisions and absent
+questions; this script was written after the system was frozen for held-out
+(commit bfbd487) and changes nothing the held-out run uses, so the overlap
+cannot affect that number. Expected provisions and absent
 topics were checked against `grounded.db` (corpus 24649b93).
 
 | # | Question | Expect | Provision(s) |
